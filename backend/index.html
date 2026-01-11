@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Content Agent Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: monospace; 
+            padding: 20px; 
+            background: #fff; 
+            color: #000;
+            line-height: 1.5;
+        }
+        
+        .container { max-width: 1600px; margin: 0 auto; }
+        
+        h1 { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
+        h2 { margin: 30px 0 10px 0; border-left: 3px solid #000; padding-left: 10px; }
+        h3 { margin: 20px 0 10px 0; font-size: 16px; }
+        
+        /* Connection Status */
+        .status-bar { 
+            display: grid; 
+            grid-template-columns: repeat(3, 1fr); 
+            gap: 10px; 
+            margin-bottom: 30px; 
+            border: 1px solid #000;
+            padding: 10px;
+        }
+        .status-card { padding: 10px; border: 1px solid #ccc; }
+        .status-card h4 { margin-bottom: 5px; }
+        
+        /* Form */
+        .form-section { border: 1px solid #000; padding: 20px; margin-bottom: 30px; }
+        input[type="text"], textarea { 
+            width: 100%; 
+            padding: 8px; 
+            margin: 10px 0; 
+            border: 1px solid #000; 
+            font-family: monospace;
+        }
+        button { 
+            padding: 8px 16px; 
+            border: 1px solid #000; 
+            background: #fff; 
+            cursor: pointer; 
+            font-family: monospace;
+            margin: 5px 5px 5px 0;
+        }
+        button:hover { background: #f0f0f0; }
+        .btn-connect { background: #d4edda; }
+        .btn-disconnect { background: #f8d7da; }
+        
+        /* Sections */
+        .section { 
+            border: 1px solid #000; 
+            padding: 15px; 
+            margin-bottom: 20px; 
+        }
+        .section-hidden { display: none; }
+        
+        /* Data Box */
+        .data-box { 
+            background: #f9f9f9; 
+            padding: 10px; 
+            margin: 10px 0; 
+            border: 1px solid #ccc; 
+            white-space: pre-wrap; 
+            font-family: monospace; 
+            font-size: 12px; 
+            max-height: 400px; 
+            overflow-y: auto; 
+        }
+        
+        /* Video Layout */
+        .video-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .video-long {
+            max-width: 800px;
+            margin: 20px auto;
+        }
+        .video-card {
+            border: 1px solid #000;
+            padding: 10px;
+        }
+        .video-card video {
+            width: 100%;
+            border: 1px solid #000;
+            margin-bottom: 10px;
+            background: #000;
+        }
+        .video-card h4 { margin-bottom: 5px; font-size: 14px; }
+        .video-card p { margin: 5px 0; font-size: 12px; }
+        .video-actions { margin-top: 10px; }
+        .video-actions input { 
+            width: 100%; 
+            padding: 5px; 
+            margin-bottom: 5px; 
+            border: 1px solid #000;
+            font-family: monospace;
+            font-size: 11px;
+        }
+        
+        /* Image Grid */
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .image-card {
+            border: 1px solid #000;
+            padding: 10px;
+        }
+        .image-card img {
+            width: 100%;
+            border: 1px solid #000;
+            margin-bottom: 5px;
+        }
+        .image-prompt {
+            font-size: 11px;
+            background: #f9f9f9;
+            padding: 5px;
+            border: 1px solid #ccc;
+        }
+        
+        /* Loading */
+        .loading {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.95);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #000;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Links */
+        a { color: #000; }
+        .link-btn {
+            display: inline-block;
+            padding: 5px 10px;
+            border: 1px solid #000;
+            text-decoration: none;
+            margin: 5px 5px 5px 0;
+            background: #e8f5e9;
+        }
+        .link-btn:hover { background: #c8e6c9; }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p style="margin-top: 20px;">Processing...</p>
+    </div>
+
+    <div class="container">
+        <h1>Content Agent Dashboard</h1>
+
+        <!-- Connection Status -->
+        <div class="status-bar">
+            <div class="status-card">
+                <h4>WordPress</h4>
+                <div id="wpStatus">Checking...</div>
+                <div id="wpActions"></div>
+            </div>
+            <div class="status-card">
+                <h4>YouTube</h4>
+                <div id="ytStatus">Checking...</div>
+                <div id="ytActions"></div>
+            </div>
+            <div class="status-card">
+                <h4>X (Twitter)</h4>
+                <div id="xStatus">Checking...</div>
+                <div id="xActions"></div>
+            </div>
+        </div>
+
+        <!-- Input Form -->
+        <div class="form-section">
+            <h2>Generate Campaign</h2>
+            <form id="campaignForm">
+                <input type="text" name="topic" placeholder="Enter campaign topic..." required>
+                <div style="margin: 15px 0;">
+                    <label><input type="radio" name="plan" value="free" checked> Free</label>
+                    <label style="margin-left: 20px;"><input type="radio" name="plan" value="premium"> Premium</label>
+                </div>
+                <button type="submit">Generate Content</button>
+            </form>
+        </div>
+
+        <!-- Results -->
+        <div id="results" class="section-hidden">
+
+            <!-- Phase 1: Intent Classification -->
+            <div class="section">
+                <h2>Phase 1: Intent Classification</h2>
+                <div id="intentData" class="data-box"></div>
+            </div>
+
+            <!-- Phase 2: Research Results -->
+            <div class="section">
+                <h2>Phase 2: Research Results</h2>
+                <div id="researchData" class="data-box"></div>
+            </div>
+
+            <!-- Phase 3: Strategic Brief -->
+            <div class="section">
+                <h2>Phase 3: Strategic Brief</h2>
+                <div id="briefData" class="data-box"></div>
+            </div>
+
+            <!-- Phase 4: Blog -->
+            <div class="section">
+                <h2>Phase 4: Blog Content</h2>
+                <h3 id="blogTitle"></h3>
+                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-top: 15px;">
+                    <div>
+                        <h3>Blog Content:</h3>
+                        <div id="blogContent" class="data-box" style="max-height: 500px;"></div>
+                    </div>
+                    <div>
+                        <h3>Hero Image:</h3>
+                        <div id="blogImage"></div>
+                        <h3>Image Prompt:</h3>
+                        <div id="blogPrompt" class="data-box"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Phase 5: Advertisement Images -->
+            <div class="section">
+                <h2>Phase 5: Advertisement Images</h2>
+                <div id="adImages" class="image-grid"></div>
+            </div>
+
+            <!-- Phase 6: Videos -->
+            <div class="section" id="videoSection" style="display: none;">
+                <h2>Phase 6: Video Production</h2>
+                
+                <h3>Video Summary:</h3>
+                <div id="videoSummary" class="data-box"></div>
+                
+                <h3>Background Music:</h3>
+                <div id="musicInfo" class="data-box"></div>
+                
+                <h3>Short Videos (15s, 25s, 30s):</h3>
+                <div id="videoShortGrid" class="video-grid"></div>
+                
+                <h3>Long Video (60s):</h3>
+                <div id="videoLongContainer" class="video-long"></div>
+            </div>
+
+            <!-- Phase 7: WordPress Publishing -->
+            <div class="section">
+                <h2>Phase 7: WordPress</h2>
+                <div id="wpPublishData" class="data-box"></div>
+                <div id="wpPublishActions" style="margin-top: 15px;"></div>
+            </div>
+
+            <!-- Phase 8: X Publishing -->
+            <div class="section">
+                <h2>Phase 8: X (Twitter)</h2>
+                <textarea id="xTweetText" rows="3" placeholder="Tweet text..."></textarea>
+                <div id="xDraftData" class="data-box"></div>
+                <div id="xPublishActions" style="margin-top: 15px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let campaignData = {};
+
+        // Check connections
+        async function checkConnections() {
+            try {
+                const [wp, yt, x] = await Promise.all([
+                    fetch('/status').then(r => r.json()).catch(() => ({connected: false})),
+                    fetch('/youtube/status').then(r => r.json()).catch(() => ({is_connected: false})),
+                    fetch('/x/status').then(r => r.json()).catch(() => ({connected: false}))
+                ]);
+
+                // WordPress
+                if (wp.connected) {
+                    document.getElementById('wpStatus').innerHTML = `Connected: ${wp.site_url || 'Yes'}`;
+                    document.getElementById('wpActions').innerHTML = `<button class="btn-disconnect" onclick="disconnect('wp')">Disconnect</button>`;
+                } else {
+                    document.getElementById('wpStatus').innerHTML = 'Not Connected';
+                    document.getElementById('wpActions').innerHTML = `<button class="btn-connect" onclick="location.href='/connect_wordpress'">Connect</button>`;
+                }
+
+                // YouTube
+                if (yt.is_connected) {
+                    const channelName = yt.channel_info?.channel_name || 'Yes';
+                    document.getElementById('ytStatus').innerHTML = `Connected: ${channelName}`;
+                    document.getElementById('ytActions').innerHTML = `<button class="btn-disconnect" onclick="disconnect('yt')">Disconnect</button>`;
+                } else {
+                    document.getElementById('ytStatus').innerHTML = 'Not Connected';
+                    document.getElementById('ytActions').innerHTML = `<button class="btn-connect" onclick="location.href='/youtube/login'">Connect</button>`;
+                }
+
+                // X (Twitter)
+                if (x.connected) {
+                    document.getElementById('xStatus').innerHTML = `Connected: @${x.username || 'Yes'}`;
+                    document.getElementById('xActions').innerHTML = `<button class="btn-disconnect" onclick="disconnect('x')">Disconnect</button>`;
+                } else {
+                    document.getElementById('xStatus').innerHTML = 'Not Connected';
+                    document.getElementById('xActions').innerHTML = `<button class="btn-connect" onclick="location.href='/x/login'">Connect</button>`;
+                }
+            } catch (e) {
+                console.error('Connection check failed:', e);
+            }
+        }
+
+        async function disconnect(platform) {
+            const routes = { wp: '/disconnect', yt: '/youtube/disconnect', x: '/x/disconnect' };
+            await fetch(routes[platform], { method: 'POST' });
+            checkConnections();
+        }
+
+        // Form submission
+        document.getElementById('campaignForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            document.getElementById('loading').style.display = 'flex';
+            
+            const formData = new FormData(e.target);
+            
+            try {
+                const response = await fetch('/analyze_topic', { method: 'POST', body: formData });
+                const data = await response.json();
+                
+                if (!response.ok) throw new Error(data.error || 'Request failed');
+                
+                console.log('Backend Response:', data);
+                
+                campaignData = data;
+                renderResults(data);
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('results').classList.remove('section-hidden');
+                
+            } catch (err) {
+                alert('Error: ' + err.message);
+                console.error('Error:', err);
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+
+        function renderResults(data) {
+            // Phase 1: Intent
+            if (data.strategy) {
+                document.getElementById('intentData').textContent = JSON.stringify(data.strategy, null, 2);
+            }
+
+            // Phase 2: Research
+            if (data.research_results && data.research_results !== "N/A") {
+                document.getElementById('researchData').textContent = JSON.stringify(data.research_results, null, 2);
+            } else {
+                document.getElementById('researchData').textContent = "No research performed";
+            }
+
+            // Phase 3: Strategic Brief
+            if (data.strategic_brief && data.strategic_brief !== "N/A") {
+                document.getElementById('briefData').textContent = JSON.stringify(data.strategic_brief, null, 2);
+            } else {
+                document.getElementById('briefData').textContent = "No strategic brief";
+            }
+
+            // Phase 4: Blog
+            if (data.blog_generation_data) {
+                document.getElementById('blogTitle').textContent = data.blog_generation_data.title || 'Blog Post';
+                document.getElementById('blogPrompt').textContent = data.blog_generation_data.visual_image_prompt || 'N/A';
+            }
+            if (data.final_blog_content && data.final_blog_content !== "N/A") {
+                document.getElementById('blogContent').textContent = data.final_blog_content;
+            } else {
+                document.getElementById('blogContent').textContent = "No blog content generated";
+            }
+            if (data.blog_hero_image_url && data.blog_hero_image_url !== "N/A") {
+                document.getElementById('blogImage').innerHTML = `<img src="${data.blog_hero_image_url}" style="width: 100%; border: 1px solid #000;">`;
+            }
+
+            // Phase 5: Advertisement Images
+            const adContainer = document.getElementById('adImages');
+            adContainer.innerHTML = '';
+            
+            const images = data.generated_image_urls || [];
+            const prompts = data.image_prompts || [];
+            
+            if (images.length > 0) {
+                images.forEach((url, idx) => {
+                    const promptText = prompts[idx]?.prompt || prompts[idx]?.image_prompt || 'N/A';
+                    adContainer.innerHTML += `
+                        <div class="image-card">
+                            <img src="${url}" alt="Ad Image ${idx + 1}">
+                            <div class="image-prompt">${promptText}</div>
+                        </div>
+                    `;
+                });
+            } else {
+                adContainer.innerHTML = '<p>No advertisement images generated</p>';
+            }
+
+            // Phase 6: Videos
+            if (data.videos && Array.isArray(data.videos)) {
+                document.getElementById('videoSection').style.display = 'block';
+                
+                // Video Summary
+                if (data.video_summary) {
+                    document.getElementById('videoSummary').textContent = JSON.stringify(data.video_summary, null, 2);
+                }
+                
+                // Music Info
+                if (data.strategy?.music_search_query) {
+                    document.getElementById('musicInfo').textContent = `Query: "${data.strategy.music_search_query}"`;
+                } else {
+                    document.getElementById('musicInfo').textContent = "No music info";
+                }
+                
+                // Separate SHORT and LONG videos
+                const shortVideos = data.videos.filter(v => 
+                    v.label !== 'LONG_FORM' && (v.status === 'Generated' || v.video_url)
+                );
+                const longVideo = data.videos.find(v => 
+                    v.label === 'LONG_FORM' && (v.status === 'Generated' || v.video_url)
+                );
+                
+                // Render SHORT videos
+                const shortGrid = document.getElementById('videoShortGrid');
+                shortGrid.innerHTML = '';
+                shortVideos.forEach((video, idx) => {
+                    shortGrid.appendChild(createVideoCard(video, idx));
+                });
+                
+                // Render LONG video
+                const longContainer = document.getElementById('videoLongContainer');
+                longContainer.innerHTML = '';
+                if (longVideo) {
+                    longContainer.appendChild(createVideoCard(longVideo, 999));
+                } else {
+                    longContainer.innerHTML = '<p>No long video generated</p>';
+                }
+            } else {
+                document.getElementById('videoSection').style.display = 'none';
+            }
+
+            // Phase 7: WordPress
+            if (data.wordpress_post_id && data.wordpress_post_id !== "N/A") {
+                let wpData = `Post ID: ${data.wordpress_post_id}\nStatus: ${data.wordpress_status || 'Draft'}`;
+                if (data.wordpress_url) wpData += `\nURL: ${data.wordpress_url}`;
+                if (data.wordpress_message) wpData += `\nMessage: ${data.wordpress_message}`;
+                
+                document.getElementById('wpPublishData').textContent = wpData;
+                
+                document.getElementById('wpPublishActions').innerHTML = `
+                    <label>Schedule Time: <input type="datetime-local" id="wpTime"></label><br><br>
+                    <button onclick="publishWordPress('publish')">Publish Now</button>
+                    <button onclick="publishWordPress('schedule')">Schedule</button>
+                    <button onclick="publishWordPress('trash')">Discard</button>
+                    ${data.wordpress_url ? `<a href="${data.wordpress_url}" target="_blank" class="link-btn">View Draft</a>` : ''}
+                `;
+            } else {
+                document.getElementById('wpPublishData').textContent = "No WordPress post created";
+            }
+
+            // Phase 8: X (Twitter)
+            if (data.x_draft) {
+                document.getElementById('xTweetText').value = data.x_draft.text || '';
+                document.getElementById('xDraftData').textContent = JSON.stringify(data.x_draft, null, 2);
+                
+                document.getElementById('xPublishActions').innerHTML = `
+                    <label>Schedule Time: <input type="datetime-local" id="xTime"></label><br><br>
+                    <button onclick="publishX('publish')">Post Now</button>
+                    <button onclick="publishX('schedule')">Schedule</button>
+                    <button onclick="publishX('discard')">Discard</button>
+                `;
+            } else {
+                document.getElementById('xDraftData').textContent = "No X draft created";
+            }
+        }
+
+        // Create video card
+        function createVideoCard(video, index) {
+            const card = document.createElement('div');
+            card.className = 'video-card';
+            
+            let publishedLink = '';
+            if (video.youtube_upload_data?.status === 'Published' && video.youtube_upload_data?.public_url) {
+                publishedLink = `<a href="${video.youtube_upload_data.public_url}" target="_blank" class="link-btn">View on YouTube</a>`;
+            }
+            
+            card.innerHTML = `
+                <h4>${video.label} (${video.duration}s)</h4>
+                ${video.video_url ? `
+                    <video controls>
+                        <source src="${video.video_url}" type="video/mp4">
+                        Your browser does not support video.
+                    </video>
+                ` : '<p>Video not available</p>'}
+                <p><strong>Title:</strong> ${video.title || 'N/A'}</p>
+                <p><strong>Description:</strong> ${(video.description || '').substring(0, 150)}...</p>
+                ${video.youtube_upload_data ? `
+                    <div class="data-box" style="margin-top: 10px;">
+                        YouTube Status: ${video.youtube_upload_data.status || 'Ready'}
+                        ${video.youtube_upload_data.connected === false ? '\nYouTube Not Connected' : ''}
+                    </div>
+                ` : ''}
+                ${publishedLink || `
+                    <div class="video-actions">
+                        <label>Schedule: <input type="datetime-local" id="ytTime${index}"></label>
+                        <button onclick="publishVideo(${index}, 'publish')">Publish Now</button>
+                        <button onclick="publishVideo(${index}, 'schedule')">Schedule</button>
+                        <button onclick="publishVideo(${index}, 'discard')">Discard</button>
+                    </div>
+                `}
+            `;
+            
+            return card;
+        }
+
+        // Publish video to YouTube
+        async function publishVideo(videoIndex, action) {
+            const video = campaignData.videos[videoIndex];
+            if (!video) return alert('Video not found');
+            
+            const timeInput = document.getElementById(`ytTime${videoIndex}`);
+            const time = timeInput?.value;
+            
+            const formData = new FormData();
+            formData.append('platform', 'youtube');
+            formData.append('action', action);
+            formData.append('video_path', video.video_path || video.youtube_upload_data?.file_path);
+            formData.append('video_title', video.title);
+            formData.append('video_description', video.description || video.title);
+            formData.append('video_label', video.label);
+            if (time && action === 'schedule') {
+                formData.append('publish_time', new Date(time).toISOString());
+            }
+            
+            try {
+                document.getElementById('loading').style.display = 'flex';
+                const res = await fetch('/schedule_post', { method: 'POST', body: formData });
+                const result = await res.json();
+                
+                document.getElementById('loading').style.display = 'none';
+                
+                if (res.ok) {
+                    alert(`YouTube ${action} successful!`);
+                    // Update UI without reload
+                    if (result.video_url) {
+                        const card = document.querySelector(`#ytTime${videoIndex}`).closest('.video-card');
+                        const actions = card.querySelector('.video-actions');
+                        actions.innerHTML = `<a href="${result.video_url}" target="_blank" class="link-btn">View on YouTube</a>`;
+                    }
+                } else {
+                    alert('YouTube Error: ' + (result.error || result.message || 'Action failed'));
+                }
+            } catch (err) {
+                document.getElementById('loading').style.display = 'none';
+                alert('Error: ' + err.message);
+            }
+        }
+
+        // Publish WordPress
+        async function publishWordPress(action) {
+            const time = document.getElementById('wpTime')?.value;
+            
+            const formData = new FormData();
+            formData.append('platform', 'wordpress');
+            formData.append('action', action);
+            formData.append('post_id', campaignData.wordpress_post_id);
+            if (time && action === 'schedule') {
+                formData.append('publish_time', new Date(time).toISOString());
+            }
+            
+            try {
+                document.getElementById('loading').style.display = 'flex';
+                const res = await fetch('/schedule_post', { method: 'POST', body: formData });
+                const result = await res.json();
+                
+                document.getElementById('loading').style.display = 'none';
+                
+                if (res.ok) {
+                    alert(`WordPress ${action} successful!`);
+                    if (result.wordpress?.post_url) {
+                        document.getElementById('wpPublishActions').innerHTML += `
+                            <a href="${result.wordpress.post_url}" target="_blank" class="link-btn">View Post</a>
+                        `;
+                    }
+                } else {
+                    alert('WordPress Error: ' + (result.error || result.message || 'Action failed'));
+                }
+            } catch (err) {
+                document.getElementById('loading').style.display = 'none';
+                alert('Error: ' + err.message);
+            }
+        }
+
+        // Publish X
+        async function publishX(action) {
+            const time = document.getElementById('xTime')?.value;
+            const text = document.getElementById('xTweetText').value;
+            
+            const formData = new FormData();
+            formData.append('platform', 'x');
+            formData.append('action', action);
+            formData.append('tweet_text', text);
+            if (campaignData.x_draft?.media_path) {
+                formData.append('image_path', campaignData.x_draft.media_path);
+            }
+            if (time && action === 'schedule') {
+                formData.append('publish_time', new Date(time).toISOString());
+            }
+            
+            try {
+                document.getElementById('loading').style.display = 'flex';
+                const res = await fetch('/schedule_post', { method: 'POST', body: formData });
+                const result = await res.json();
+                
+                document.getElementById('loading').style.display = 'none';
+                
+                if (res.ok) {
+                    alert(`X ${action} successful!`);
+                    if (result.tweet_url) {
+                        document.getElementById('xPublishActions').innerHTML += `
+                            <a href="${result.tweet_url}" target="_blank" class="link-btn">View Tweet</a>
+                        `;
+                    }
+                } else {
+                    alert('X Error: ' + (result.error || result.message || 'Action failed'));
+                }
+            } catch (err) {
+                document.getElementById('loading').style.display = 'none';
+                alert('Error: ' + err.message);
+            }
+        }
+
+        // Initialize
+        checkConnections();
+    </script>
+</body>
+</html>
