@@ -5,7 +5,7 @@ from typing import List, Optional, Dict, Any
 from pydantic import BaseModel,Field
 from google import genai
 from google.genai import types
-
+from openai import OpenAI
 # Import ResearchQueries model needed for ContentStrategy
 from Campaign.campaign_tavily_search import ResearchQueries
 
@@ -90,27 +90,28 @@ Example for 'campaign' intent:
 }
 """
 
-def classify_and_strategize(topic: str, gemini_client: genai.Client) -> ContentStrategy:
+def classify_and_strategize(topic: str, gemini_client: OpenAI) -> ContentStrategy:
     """Calls the first LLM to determine intent and initial strategy."""
     strategy_system_prompt = get_strategy_system_prompt()
     user_topic_prompt = f"Analyze the following topic and generate the content strategy JSON: {topic}"
 
     # Use a validated model name (e.g., gemini-2.0-flash)
     try:
-        response = gemini_client.models.generate_content(
-            model='gemini-2.0-flash', 
-            contents=[strategy_system_prompt, user_topic_prompt],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", 
-                temperature=0.7
-            )
+        response = gemini_client.chat.completions.create(
+            model="google/gemini-2.0-flash-001",
+            messages=[
+                {"role": "system", "content": strategy_system_prompt},
+                {"role": "user", "content": user_topic_prompt}
+            ],
+            temperature=0.7,
+            response_format={"type": "json_object"}
         )
         
         print("\n--- LLM Intent Classifier JSON Response ---")
-        print(response.text)
+        print(response.choices[0].message.content)
         print("-------------------------------------------\n")
 
-        llm_output_data = json.loads(response.text)
+        llm_output_data = json.loads(response.choices[0].message.content)
         return ContentStrategy(**llm_output_data)
 
     except Exception as e:
