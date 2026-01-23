@@ -23,7 +23,8 @@ pending_auth = {}
 async def x_login(request: Request):
     """Step 1: Initiate OAuth 1.0a Flow matching your Portal settings"""
     # CRITICAL: We hardcode the callback to http://localhost:8000/ to match your screenshot
-    callback_url = "http://localhost:8000/"
+    from config import X_REDIRECT_URI 
+    callback_url = X_REDIRECT_URI
     
     auth = tweepy.OAuth1UserHandler(X_API_KEY, X_API_KEY_SECRET, callback=callback_url)
     try:
