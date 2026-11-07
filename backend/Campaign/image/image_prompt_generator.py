@@ -3,14 +3,10 @@
 import json
 import re
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel
-from google import genai
-from google.genai import types
-from fastapi import HTTPException
-
-# Import the research analysis model for input
+from pydantic import BaseModel 
+from fastapi import HTTPException  
 from Campaign.research_analysis import ResearchAnalysis
-
+from utils.ai_helpers import openrouter_chat_completion
 # --- Pydantic Model for Image Prompt Output ---
 
 class GeneratedImagePrompt(BaseModel):
@@ -63,14 +59,11 @@ SCHEMA:
 """
  
 
-def generate_image_prompts(analysis_brief: ResearchAnalysis, gemini_client: genai.Client,required_image_count: int) -> ImagePromptListOutput:
+def generate_image_prompts(analysis_brief: ResearchAnalysis, required_image_count: int) -> ImagePromptListOutput:
     """
     Generates a list of image prompts using the Gemini API based on the strategic brief.
     """
-    
-    if not gemini_client:
-        raise HTTPException(status_code=500, detail="Gemini Client is not initialized for image prompt generation.")
-    
+   
     # 1. Determine the image count based on the topic (enforces constraints)
     image_count: int = required_image_count
     
@@ -86,13 +79,17 @@ def generate_image_prompts(analysis_brief: ResearchAnalysis, gemini_client: gena
     
     # 3. Call the Gemini API
     try:
-        response = gemini_client.models.generate_content(
-            model='gemini-2.0-flash', # Use a fast model for this synthesis step
-            contents=[llm_system_prompt, llm_user_prompt],
-            config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.7) # Higher temperature for creative variations
+        response = openrouter_chat_completion(
+            messages=[
+                {"role": "system", "content": llm_system_prompt},
+                {"role": "user", "content": llm_user_prompt}
+            ],
+            temperature=0.7,
+            response_format={"type": "json_object"},
+            stage="image_prompt"
         )
         
-        raw_json_text: str = response.text.strip()
+        raw_json_text: str = response.choices[0].message.content.strip()
         
         # Validation and Parsing
         output_data: Dict[str, Any] = json.loads(raw_json_text)

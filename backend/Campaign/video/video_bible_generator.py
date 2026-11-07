@@ -1,12 +1,9 @@
 import json
 from typing import List, Dict, Any
 from pydantic import BaseModel, ValidationError
-from google import genai
-from google.genai import types
-from fastapi import HTTPException 
-
-# --- Import your existing models for type hinting ---
-# Assuming these files are in the same environment:
+from fastapi import HTTPException  
+from utils.ai_helpers import openrouter_chat_completion
+ 
 from Campaign.research_analysis import ResearchAnalysis 
 from  llm_intent_classifier import ContentStrategy # Used for keywords
 
@@ -77,16 +74,11 @@ SCHEMA (MUST BE FOLLOWED):
 def generate_video_bible(
     analysis_brief:  ResearchAnalysis, # Use ResearchAnalysis in your production code
     initial_keywords: List[str],
-    gemini_client: genai.Client,
     original_topic: str = ""
 ) -> VideoBibleOutput:
     """
     Generates the Video Bible (global constraints and aesthetics) using the Gemini API.
     """
-    
-    if not gemini_client:
-        raise HTTPException(status_code=500, detail="Gemini Client is not initialized.")
-
     llm_system_prompt = get_video_bible_system_for_gemini()
     
     # 2. Construct the full prompt payload for Gemini
@@ -101,13 +93,17 @@ def generate_video_bible(
     
     # 3. Call the Gemini API
     try:
-        response = gemini_client.models.generate_content(
-            model='gemini-2.0-flash', # Fast and reliable for JSON synthesis
-            contents=[llm_system_prompt, llm_user_prompt],
-            config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.3)
+        response = openrouter_chat_completion(
+            messages=[
+                {"role": "system", "content": llm_system_prompt},
+                {"role": "user", "content": llm_user_prompt}
+            ],
+            temperature=0.3,
+            response_format={"type": "json_object"},
+            stage="video_1"
         )
         
-        raw_json_text = response.text.strip()
+        raw_json_text = response.choices[0].message.content.strip()
         
         output_data = json.loads(raw_json_text)
         

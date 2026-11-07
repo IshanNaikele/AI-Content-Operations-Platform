@@ -1,15 +1,11 @@
 import json
 from typing import List, Dict, Any, Optional
-from pydantic import BaseModel, ValidationError
-from google import genai
-from google.genai import types
+from pydantic import BaseModel, ValidationError 
 from fastapi import HTTPException
-import re
-
-# --- Import PRODUCTION Models for Type Hinting and Input ---
+import re  
 from Campaign.video.storyboard_generator import Scene
 from Campaign.video.video_bible_generator import VideoBible
-
+from utils.ai_helpers import openrouter_chat_completion
 
 # --- 1. Pydantic Models for Final Output (Modified for Batch Processing) ---
 
@@ -76,15 +72,12 @@ SCHEMA (MUST BE FOLLOWED):
 
 def optimize_video_prompts_batch(
     scene_data_list: List[Scene], 
-    video_bible: VideoBible, 
-    gemini_client: genai.Client,
+    video_bible: VideoBible,
 ) -> List[FinalVideoPromptOutput]:
     """
     Refines all scene draft prompts in a single batch API call and returns the list of final prompts.
     """
-    
-    if not gemini_client:
-        raise HTTPException(status_code=500, detail="Gemini Client is not initialized.")
+
     if not scene_data_list:
         return []
 
@@ -119,16 +112,17 @@ def optimize_video_prompts_batch(
     
     # 3. Call the Gemini API (ONE SINGLE CALL)
     try:
-        response = gemini_client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=[llm_system_prompt, llm_user_prompt],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", 
-                temperature=0.2
-            )
+        response = openrouter_chat_completion(
+            messages=[
+                {"role": "system", "content": llm_system_prompt},
+                {"role": "user", "content": llm_user_prompt}
+            ],
+            temperature=0.2,
+            response_format={"type": "json_object"},
+            stage="video_2"
         )
         
-        raw_json_text = response.text.strip()
+        raw_json_text = response.choices[0].message.content.strip()
         
         # VALIDATE and parse the simplified batch output
         batch_output = BatchPromptOutput.model_validate_json(raw_json_text)

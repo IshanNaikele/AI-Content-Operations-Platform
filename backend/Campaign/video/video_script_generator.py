@@ -1,16 +1,11 @@
 import json
 from typing import List, Dict, Any , Tuple
 from pydantic import BaseModel, ValidationError
-from google import genai
-from google.genai import types
 from fastapi import HTTPException
-import re
-
-# --- Import your existing models for type hinting ---
-# NOTE: In a real system, you would import these:
+import re  
 from Campaign.research_analysis import ResearchAnalysis 
 from .video_bible_generator import  VideoBibleOutput 
-
+from utils.ai_helpers import openrouter_chat_completion
 # --- 1. Pydantic Model for Script Output ---
 
 class ScriptOutput(BaseModel):
@@ -63,17 +58,13 @@ SCHEMA:
 def generate_video_script(
     video_bible_output: VideoBibleOutput , # Use VideoBibleOutput in your production code
     analysis_brief: ResearchAnalysis , # Use ResearchAnalysis in your production code
-    duration_seconds: int,
-    gemini_client: genai.Client,
+    duration_seconds: int ,
     original_topic: str = ""
 ) -> ScriptOutput:
     """
     Generates the full narration script, controlling for word count based on duration.
     """
     
-    if not gemini_client:
-        raise HTTPException(status_code=500, detail="Gemini Client is not initialized.")
-
     # Calculate target word count based on input duration (simplified logic)
     target_wc = calculate_target_word_count_from_seconds(duration_seconds)
     total_s = duration_seconds
@@ -96,16 +87,17 @@ def generate_video_script(
     
     # 3. Call the Gemini API
     try:
-        response = gemini_client.models.generate_content(
-            model='gemini-2.5-flash', 
-            contents=[llm_system_prompt, llm_user_prompt],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", 
-                temperature=0.7 # Higher temperature for creative scriptwriting
-            )
+        response = openrouter_chat_completion(
+            messages=[
+                {"role": "system", "content": llm_system_prompt},
+                {"role": "user", "content": llm_user_prompt}
+            ],
+            temperature=0.7,
+            response_format={"type": "json_object"},
+            stage="video_2"
         )
         
-        raw_json_text = response.text.strip()
+        raw_json_text = response.choices[0].message.content.strip()
         output_data = json.loads(raw_json_text)
         
         # Add the target and duration to the final Pydantic model for verification/tracking

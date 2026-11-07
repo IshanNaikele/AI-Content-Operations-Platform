@@ -64,7 +64,7 @@ def stitch_slideshow_video_ffmpeg(
     # --- NEW: DYNAMIC RESOLUTION LOGIC ---
     total_duration = sum(m.duration for m in scene_metadata)
     
-    if total_duration <= 45:
+    if total_duration <= 20:
         canvas_width, canvas_height = 1080, 1920
         is_short = True
         font_size = 8

@@ -3,10 +3,7 @@
 import json
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel,Field
-from google import genai
-from google.genai import types
-from openai import OpenAI
-# Import ResearchQueries model needed for ContentStrategy
+from utils.ai_helpers import openrouter_chat_completion 
 from Campaign.campaign_tavily_search import ResearchQueries
 
 # --- Pydantic Models (Copied from original for self-containment/clean imports) ---
@@ -90,21 +87,21 @@ Example for 'campaign' intent:
 }
 """
 
-def classify_and_strategize(topic: str, gemini_client: OpenAI) -> ContentStrategy:
+def classify_and_strategize(topic: str ) -> ContentStrategy:
     """Calls the first LLM to determine intent and initial strategy."""
     strategy_system_prompt = get_strategy_system_prompt()
     user_topic_prompt = f"Analyze the following topic and generate the content strategy JSON: {topic}"
 
     # Use a validated model name (e.g., gemini-2.0-flash)
     try:
-        response = gemini_client.chat.completions.create(
-            model="google/gemini-2.0-flash-001",
+        response = openrouter_chat_completion(
             messages=[
                 {"role": "system", "content": strategy_system_prompt},
                 {"role": "user", "content": user_topic_prompt}
             ],
             temperature=0.7,
-            response_format={"type": "json_object"}
+            response_format={"type": "json_object"},
+            stage="research"
         )
         
         print("\n--- LLM Intent Classifier JSON Response ---")

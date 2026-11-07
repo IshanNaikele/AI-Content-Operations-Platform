@@ -15,7 +15,7 @@ from config import get_wordpress_credentials
 CLIENT_ID, CLIENT_SECRET = get_wordpress_credentials()
 # Configure logging for better debugging
 logger = logging.getLogger(__name__)
-REDIRECT_URI = "http://localhost:8000/callback"
+REDIRECT_URI = os.getenv("WORDPRESS_REDIRECT_URI", "http://3.110.223.163:3000/callback")
 # Add validation:
 if not CLIENT_ID or not CLIENT_SECRET:
     raise ValueError("WordPress credentials not configured in environment")
@@ -38,6 +38,16 @@ def save_persistent_credentials(access_token: str, blog_id: str, user_sites: lis
     }
     with open(WP_CREDENTIALS_PATH, "w") as f:
         json.dump(data, f)
+
+def markdown_to_html(text: str) -> str:
+    """Convert markdown **bold** to HTML <strong>bold</strong>"""
+    import re
+    # Convert **text** to <strong>text</strong>
+    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
+    # Convert line breaks to <br> tags
+    text = text.replace('\n', '<br>')
+    return text
+
 
 def get_session_data(request: Request) -> Dict[str, Any]:
     """Safely extract WordPress data, falling back to persistent storage."""
@@ -238,7 +248,7 @@ def create_draft_post_to_wordpress(
     
     payload = {
         "title": title,
-        "content": content,
+        "content": markdown_to_html(content), 
         "status": "draft", # <-- CRITICAL: Save as DRAFT
         "format": "standard"
     }

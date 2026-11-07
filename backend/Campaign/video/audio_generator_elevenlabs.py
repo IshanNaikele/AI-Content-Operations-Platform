@@ -3,15 +3,11 @@ import re
 import json
 from typing import List, Optional
 from pathlib import Path
-from pydantic import BaseModel
-from dotenv import load_dotenv
+from pydantic import BaseModel 
 
 # Use v1beta1 to access time_pointing features
-from google.cloud import texttospeech_v1beta1 as texttospeech
-from google.oauth2 import service_account
-# Import Path Manager from root
-from  config import DATA_ROOT
-load_dotenv()
+from google.cloud import texttospeech_v1beta1 as texttospeech 
+from config import DATA_ROOT, GOOGLE_SERVICE_ACCOUNT_JSON, get_google_tts_credentials 
 
 # --- 1. Pydantic Models (KEPT TO PRESERVE PIPELINE) ---
 
@@ -27,15 +23,7 @@ class AudioTimestampOutput(BaseModel):
 # --- 2. Credentials Logic (From your current Google Code) ---
 
 def get_google_credentials():
-    try:
-        service_account_json = os.getenv('GOOGLE_SERVICE_ACCOUNT_JSON')
-        if not service_account_json:
-            raise ValueError("GOOGLE_SERVICE_ACCOUNT_JSON not found in .env")
-        service_account_info = json.loads(service_account_json)
-        return service_account.Credentials.from_service_account_info(service_account_info)
-    except Exception as e:
-        print(f"❌ Credentials Error: {e}")
-        return None
+    return get_google_tts_credentials()
 
 # --- 3. Main Corrected Function ---
 
@@ -122,17 +110,9 @@ def get_tts_client():
         return texttospeech.TextToSpeechClient(credentials=creds)
     return None
 
-
 def get_default_google_client():
     """Self-contained credential loader for the pipeline."""
-    try:
-        service_account_json = os.getenv('GOOGLE_SERVICE_ACCOUNT_JSON')
-        if not service_account_json:
-            raise ValueError("GOOGLE_SERVICE_ACCOUNT_JSON missing from .env")
-        
-        service_account_info = json.loads(service_account_json)
-        creds = service_account.Credentials.from_service_account_info(service_account_info)
+    creds = get_google_tts_credentials()
+    if creds:
         return texttospeech.TextToSpeechClient(credentials=creds)
-    except Exception as e:
-        print(f"❌ Google TTS Auth Error: {e}")
-        return None
+    return None

@@ -3,15 +3,11 @@
 import json
 import re
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, field_validator
-from google import genai
-from google.genai import types
-from fastapi import HTTPException 
-
-# Import the strategic brief model and initial strategy model
+from pydantic import BaseModel, field_validator 
+from fastapi import HTTPException   
 from Campaign.research_analysis import ResearchAnalysis 
 from  llm_intent_classifier import ContentStrategy 
-
+from utils.ai_helpers import openrouter_chat_completion
 # --- Pydantic Model for Blog Output (NEW FIELD ADDED) ---
 
 class BlogPromptOutput(BaseModel):
@@ -55,14 +51,11 @@ SCHEMA (NEW FIELD INCLUDED):
 }
 """
 
-def generate_blog_prompt(analysis_brief: ResearchAnalysis, initial_strategy: ContentStrategy, gemini_client: genai.Client, original_topic: str = "") -> BlogPromptOutput:
+def generate_blog_prompt(analysis_brief: ResearchAnalysis, initial_strategy: ContentStrategy , original_topic: str = "") -> BlogPromptOutput:
     """
     Takes the strategic brief and generates a refined prompt for the blog writing LLM using the Gemini API.
     """
     
-    if not gemini_client:
-        raise HTTPException(status_code=500, detail="Gemini Client is not initialized for blog prompt generation.")
-
     initial_keywords = initial_strategy.keywords 
     llm_system_prompt = get_blog_prompt_system_for_gemini()
     
@@ -78,13 +71,17 @@ def generate_blog_prompt(analysis_brief: ResearchAnalysis, initial_strategy: Con
     
     # 3. Call the Gemini API
     try:
-        response = gemini_client.models.generate_content(
-            model='gemini-2.0-flash', # Use a fast model for this synthesis step
-            contents=[llm_system_prompt, llm_user_prompt],
-            config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.3)
+        response = openrouter_chat_completion(
+            messages=[
+                {"role": "system", "content": llm_system_prompt},
+                {"role": "user", "content": llm_user_prompt}
+            ],
+            temperature=0.3,
+            response_format={"type": "json_object"},
+            stage="blog_prompt"
         )
         
-        raw_json_text = response.text.strip()
+        raw_json_text = response.choices[0].message.content.strip()
         
         output_data = json.loads(raw_json_text)
         

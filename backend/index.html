@@ -4,661 +4,782 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Content Agent Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg: #0e0e10;
+            --surface: #18181b;
+            --surface2: #232328;
+            --border: #2e2e35;
+            --accent: #6ee7b7;
+            --accent2: #818cf8;
+            --text: #e4e4e7;
+            --muted: #71717a;
+            --danger: #f87171;
+            --warn: #fbbf24;
+        }
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { 
-            font-family: monospace; 
-            padding: 20px; 
-            background: #fff; 
-            color: #000;
-            line-height: 1.5;
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 24px;
         }
-        
-        .container { max-width: 1600px; margin: 0 auto; }
-        
-        h1 { border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-        h2 { margin: 30px 0 10px 0; border-left: 3px solid #000; padding-left: 10px; }
-        h3 { margin: 20px 0 10px 0; font-size: 16px; }
-        
-        /* Connection Status */
-        .status-bar { 
-            display: grid; 
-            grid-template-columns: repeat(3, 1fr); 
-            gap: 10px; 
-            margin-bottom: 30px; 
-            border: 1px solid #000;
-            padding: 10px;
+        .container { max-width: 1100px; margin: 0 auto; }
+
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 36px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
         }
-        .status-card { padding: 10px; border: 1px solid #ccc; }
-        .status-card h4 { margin-bottom: 5px; }
-        
-        /* Form */
-        .form-section { border: 1px solid #000; padding: 20px; margin-bottom: 30px; }
-        input[type="text"], textarea { 
-            width: 100%; 
-            padding: 8px; 
-            margin: 10px 0; 
-            border: 1px solid #000; 
-            font-family: monospace;
+        .header-dot {
+            width: 10px; height: 10px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--accent);
+            animation: pulse 2s infinite;
         }
-        button { 
-            padding: 8px 16px; 
-            border: 1px solid #000; 
-            background: #fff; 
-            cursor: pointer; 
-            font-family: monospace;
-            margin: 5px 5px 5px 0;
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .header h1 {
+            font-family: 'DM Mono', monospace;
+            font-size: 18px;
+            letter-spacing: 0.04em;
         }
-        button:hover { background: #f0f0f0; }
-        .btn-connect { background: #d4edda; }
-        .btn-disconnect { background: #f8d7da; }
-        
-        /* Sections */
-        .section { 
-            border: 1px solid #000; 
-            padding: 15px; 
-            margin-bottom: 20px; 
-        }
-        .section-hidden { display: none; }
-        
-        /* Data Box */
-        .data-box { 
-            background: #f9f9f9; 
-            padding: 10px; 
-            margin: 10px 0; 
-            border: 1px solid #ccc; 
-            white-space: pre-wrap; 
-            font-family: monospace; 
-            font-size: 12px; 
-            max-height: 400px; 
-            overflow-y: auto; 
-        }
-        
-        /* Video Layout */
-        .video-grid {
+        .header h1 span { color: var(--accent); }
+
+        .connections {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            margin: 20px 0;
+            gap: 12px;
+            margin-bottom: 28px;
         }
-        .video-long {
-            max-width: 800px;
-            margin: 20px auto;
+        .conn-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
         }
-        .video-card {
-            border: 1px solid #000;
-            padding: 10px;
+        .conn-info { flex: 1; min-width: 0; }
+        .conn-label {
+            font-family: 'DM Mono', monospace;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--muted);
+            margin-bottom: 4px;
         }
-        .video-card video {
+        .conn-status { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .conn-status.ok { color: var(--accent); }
+        .conn-status.no { color: var(--muted); }
+        .conn-btn {
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            white-space: nowrap;
+            transition: opacity 0.2s;
+        }
+        .conn-btn:hover { opacity: 0.8; }
+        .conn-btn.connect { background: var(--accent); color: #0e0e10; }
+        .conn-btn.disconnect { background: var(--surface2); color: var(--danger); border: 1px solid var(--border); }
+
+        .form-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 28px;
+            margin-bottom: 28px;
+        }
+        .form-card h2 {
+            font-family: 'DM Mono', monospace;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent);
+            margin-bottom: 18px;
+        }
+        .topic-input {
             width: 100%;
-            border: 1px solid #000;
-            margin-bottom: 10px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 14px 16px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
+            margin-bottom: 16px;
+        }
+        .topic-input:focus { border-color: var(--accent2); }
+        .topic-input::placeholder { color: var(--muted); }
+        .form-row { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+        .plan-group { display: flex; gap: 16px; }
+        .plan-opt {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+            cursor: pointer;
+            font-size: 14px;
+            color: var(--muted);
+            transition: color 0.2s;
+        }
+        .plan-opt input[type="radio"] { accent-color: var(--accent); cursor: pointer; }
+        .plan-opt:has(input:checked) { color: var(--text); }
+        .submit-btn {
+            margin-left: auto;
+            padding: 11px 28px;
+            background: var(--accent);
+            color: #0e0e10;
+            border: none;
+            border-radius: 8px;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+        .submit-btn:hover { opacity: 0.85; }
+        .submit-btn:active { transform: scale(0.98); }
+        .submit-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .progress-card {
+            background: var(--surface);
+            border: 1px solid var(--warn);
+            border-radius: 14px;
+            padding: 22px 28px;
+            margin-bottom: 24px;
+            display: none;
+        }
+        .progress-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+        .progress-title {
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--warn);
+        }
+        .campaign-id { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); }
+        .progress-msg { font-size: 13px; color: var(--muted); margin-bottom: 12px; }
+        .progress-track { width: 100%; height: 6px; background: var(--surface2); border-radius: 99px; overflow: hidden; }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent), var(--accent2));
+            border-radius: 99px;
+            transition: width 0.4s ease;
+        }
+
+        .result-section {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 14px;
+            padding: 24px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .section-title {
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--accent2);
+            margin-bottom: 18px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+        .image-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+        .image-card { border-radius: 10px; overflow: hidden; border: 1px solid var(--border); background: var(--surface2); }
+        .image-card img { width: 100%; display: block; }
+
+        .blog-title-display { font-size: 22px; font-weight: 600; line-height: 1.4; margin-bottom: 16px; }
+        .blog-hero { width: 100%; max-width: 560px; border-radius: 10px; margin-bottom: 16px; border: 1px solid var(--border); }
+        .blog-body {
+            background: var(--surface2);
+            border-radius: 8px;
+            padding: 18px;
+            max-height: 380px;
+            overflow-y: auto;
+            font-size: 14px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            color: #a1a1aa;
+            border: 1px solid var(--border);
+        }
+
+        .reel-container { display: flex; gap: 24px; align-items: flex-start; flex-wrap: wrap; }
+        .reel-player {
+            width: 270px;
+            flex-shrink: 0;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid var(--border);
             background: #000;
         }
-        .video-card h4 { margin-bottom: 5px; font-size: 14px; }
-        .video-card p { margin: 5px 0; font-size: 12px; }
-        .video-actions { margin-top: 10px; }
-        .video-actions input { 
-            width: 100%; 
-            padding: 5px; 
-            margin-bottom: 5px; 
-            border: 1px solid #000;
-            font-family: monospace;
-            font-size: 11px;
-        }
-        
-        /* Image Grid */
-        .image-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
-            margin: 20px 0;
-        }
-        .image-card {
-            border: 1px solid #000;
-            padding: 10px;
-        }
-        .image-card img {
+        .reel-player video { width: 100%; display: block; }
+        .reel-meta { flex: 1; min-width: 220px; }
+        .reel-meta h4 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+        .reel-meta p { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+        .reel-actions { display: flex; flex-direction: column; gap: 8px; }
+        .reel-actions input[type="datetime-local"] {
             width: 100%;
-            border: 1px solid #000;
-            margin-bottom: 5px;
+            background: var(--surface2);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            outline: none;
         }
-        .image-prompt {
+        .reel-actions input:focus { border-color: var(--accent2); }
+        .action-row { display: flex; gap: 8px; }
+        .act-btn {
+            flex: 1;
+            padding: 9px 14px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.2s;
+        }
+        .act-btn:hover { opacity: 0.8; }
+        .act-btn.primary { background: #ff0050; color: #fff; }
+        .act-btn.secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+
+        .gen-notice {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 18px;
+            background: var(--surface2);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+        .gen-spinner {
+            width: 18px; height: 18px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent2);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            flex-shrink: 0;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .gen-notice p { font-size: 13px; color: var(--muted); }
+
+        .publish-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+        .pub-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; padding: 18px; }
+        .pub-card h4 {
+            font-family: 'DM Mono', monospace;
             font-size: 11px;
-            background: #f9f9f9;
-            padding: 5px;
-            border: 1px solid #ccc;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            color: var(--muted);
+            margin-bottom: 12px;
         }
+        .pub-card textarea {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 10px 12px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            resize: vertical;
+            min-height: 70px;
+            outline: none;
+            margin-bottom: 10px;
+        }
+        .pub-card textarea:focus { border-color: var(--accent2); }
+        .pub-card input[type="datetime-local"] {
+            width: 100%;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: var(--text);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            outline: none;
+            margin-bottom: 10px;
+        }
+        .pub-card input:focus { border-color: var(--accent2); }
+        .pub-btn-row { display: flex; gap: 8px; }
         
-        /* Loading */
-        .loading {
+        .pub-btn {
+            flex: 1;
+            padding: 9px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: opacity 0.2s;
+        }
+        .pub-btn:hover { opacity: 0.8; }
+        .pub-btn.now { background: var(--accent); color: #0e0e10; }
+        .pub-btn.sched { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+
+        .loading-overlay {
             display: none;
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(255,255,255,0.95);
+            inset: 0;
+            background: rgba(14,14,16,0.85);
             z-index: 9999;
             justify-content: center;
             align-items: center;
             flex-direction: column;
+            gap: 16px;
         }
-        .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #000;
+        .big-spinner {
+            width: 44px; height: 44px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
+            animation: spin 0.9s linear infinite;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        /* Links */
-        a { color: #000; }
+        .loading-overlay p { font-size: 14px; color: var(--muted); }
+
         .link-btn {
             display: inline-block;
-            padding: 5px 10px;
-            border: 1px solid #000;
+            padding: 8px 16px;
+            background: var(--accent);
+            color: #0e0e10;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 700;
             text-decoration: none;
-            margin: 5px 5px 5px 0;
-            background: #e8f5e9;
+            margin-top: 8px;
         }
-        .link-btn:hover { background: #c8e6c9; }
+        .link-btn:hover { opacity: 0.85; text-decoration: none; }
+
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+        @media (max-width: 640px) {
+            .connections { grid-template-columns: 1fr; }
+            .form-row { flex-direction: column; align-items: flex-start; }
+            .submit-btn { margin-left: 0; width: 100%; }
+            .reel-player { width: 100%; }
+        }
     </style>
 </head>
 <body>
-    <div class="loading" id="loading">
-        <div class="spinner"></div>
-        <p style="margin-top: 20px;">Processing...</p>
+
+<div class="loading-overlay" id="loadingOverlay">
+    <div class="big-spinner"></div>
+    <p>Publishing...</p>
+</div>
+
+<div class="container">
+
+    <div class="header">
+        <div class="header-dot"></div>
+        <h1>Content <span>Agent</span> Dashboard</h1>
     </div>
 
-    <div class="container">
-        <h1>Content Agent Dashboard</h1>
+    <!-- Connections -->
+    <div class="connections">
+        <div class="conn-card">
+            <div class="conn-info">
+                <div class="conn-label">WordPress</div>
+                <div class="conn-status no" id="wpStatus">Checking...</div>
+            </div>
+            <div id="wpActions"></div>
+        </div>
+        <div class="conn-card">
+            <div class="conn-info">
+                <div class="conn-label">YouTube</div>
+                <div class="conn-status no" id="ytStatus">Checking...</div>
+            </div>
+            <div id="ytActions"></div>
+        </div>
+        <div class="conn-card">
+            <div class="conn-info">
+                <div class="conn-label">X (Twitter)</div>
+                <div class="conn-status no" id="xStatus">Checking...</div>
+            </div>
+            <div id="xActions"></div>
+        </div>
+    </div>
 
-        <!-- Connection Status -->
-        <div class="status-bar">
-            <div class="status-card">
+    <!-- Form -->
+    <div class="form-card">
+        <h2>Generate Campaign</h2>
+        <input type="text" class="topic-input" id="topicInput"
+               placeholder="e.g., AI-powered vertical farming for sustainable urban food production">
+        <div class="form-row">
+            <div class="plan-group">
+                <label class="plan-opt"><input type="radio" name="plan" value="free" checked> Free Plan</label>
+                <label class="plan-opt"><input type="radio" name="plan" value="premium"> Premium Plan</label>
+            </div>
+            <button class="submit-btn" id="submitBtn" onclick="submitCampaign()">Generate Content</button>
+        </div>
+    </div>
+
+    <!-- Progress -->
+    <div class="progress-card" id="progressCard">
+        <div class="progress-header">
+            <div class="progress-title">⚙ Generating Campaign</div>
+            <div class="campaign-id" id="campaignIdDisplay"></div>
+        </div>
+        <div class="progress-msg" id="progressMsg">Initializing...</div>
+        <div class="progress-track">
+            <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+        </div>
+    </div>
+
+    <!-- Blog Post -->
+    <div class="result-section" id="blogSection">
+        <div class="section-title">Blog Post</div>
+        <div class="blog-title-display" id="blogTitleDisplay"></div>
+        <div id="blogHeroWrap"></div>
+        <div class="blog-body" id="blogBody">Waiting for content...</div>
+    </div>
+
+    <!-- Ad Images -->
+    <div class="result-section" id="adSection">
+        <div class="section-title">Ad Images</div>
+        <div class="image-grid" id="adGrid"></div>
+    </div>
+
+    <!-- Reel generating notice -->
+    <div class="result-section" id="reelWaitSection">
+        <div class="section-title">Reel</div>
+        <div class="gen-notice">
+            <div class="gen-spinner"></div>
+            <p>Generating your 10s reel — this takes 3–5 minutes...</p>
+        </div>
+    </div>
+
+    <!-- Reel ready -->
+    <div class="result-section" id="reelSection">
+        <div class="section-title">Reel</div>
+        <div class="reel-container">
+            <div class="reel-player">
+                <video id="reelVideo" controls playsinline preload="auto"></video>
+            </div>
+            <div class="reel-meta">
+                <h4 id="reelTitle">Short Reel</h4>
+                <p id="reelDuration"></p>
+                <div class="reel-actions">
+                    <input type="datetime-local" id="ytReelTime">
+                    <div class="action-row">
+                        <button class="act-btn primary" onclick="publishReel('publish')">▶ Post to YouTube</button>
+                        <button class="act-btn secondary" onclick="publishReel('schedule')">🕐 Schedule</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Publishing -->
+    <div class="result-section" id="publishSection">
+        <div class="section-title">Publishing</div>
+        <div class="publish-grid">
+            <div class="pub-card">
                 <h4>WordPress</h4>
-                <div id="wpStatus">Checking...</div>
-                <div id="wpActions"></div>
-            </div>
-            <div class="status-card">
-                <h4>YouTube</h4>
-                <div id="ytStatus">Checking...</div>
-                <div id="ytActions"></div>
-            </div>
-            <div class="status-card">
-                <h4>X (Twitter)</h4>
-                <div id="xStatus">Checking...</div>
-                <div id="xActions"></div>
-            </div>
-        </div>
-
-        <!-- Input Form -->
-        <div class="form-section">
-            <h2>Generate Campaign</h2>
-            <form id="campaignForm">
-                <input type="text" name="topic" placeholder="Enter campaign topic..." required>
-                <div style="margin: 15px 0;">
-                    <label><input type="radio" name="plan" value="free" checked> Free</label>
-                    <label style="margin-left: 20px;"><input type="radio" name="plan" value="premium"> Premium</label>
+                <div id="wpPostInfo" style="font-size:13px;color:var(--muted);margin-bottom:10px;">Draft ready</div>
+                <input type="datetime-local" id="wpTime">
+                <div class="pub-btn-row">
+                    <button class="pub-btn now" onclick="publishWordPress('publish')">Publish Now</button>
+                    <button class="pub-btn sched" onclick="publishWordPress('schedule')">Schedule</button>
                 </div>
-                <button type="submit">Generate Content</button>
-            </form>
-        </div>
-
-        <!-- Results -->
-        <div id="results" class="section-hidden">
-
-            <!-- Phase 1: Intent Classification -->
-            <div class="section">
-                <h2>Phase 1: Intent Classification</h2>
-                <div id="intentData" class="data-box"></div>
+                <div id="wpPostLink"></div>
             </div>
-
-            <!-- Phase 2: Research Results -->
-            <div class="section">
-                <h2>Phase 2: Research Results</h2>
-                <div id="researchData" class="data-box"></div>
-            </div>
-
-            <!-- Phase 3: Strategic Brief -->
-            <div class="section">
-                <h2>Phase 3: Strategic Brief</h2>
-                <div id="briefData" class="data-box"></div>
-            </div>
-
-            <!-- Phase 4: Blog -->
-            <div class="section">
-                <h2>Phase 4: Blog Content</h2>
-                <h3 id="blogTitle"></h3>
-                <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-top: 15px;">
-                    <div>
-                        <h3>Blog Content:</h3>
-                        <div id="blogContent" class="data-box" style="max-height: 500px;"></div>
-                    </div>
-                    <div>
-                        <h3>Hero Image:</h3>
-                        <div id="blogImage"></div>
-                        <h3>Image Prompt:</h3>
-                        <div id="blogPrompt" class="data-box"></div>
-                    </div>
+            <div class="pub-card">
+                <h4>X / Twitter</h4>
+                <textarea id="xTweetText" placeholder="Tweet text..."></textarea>
+                <input type="datetime-local" id="xTime">
+                <div class="pub-btn-row">
+                    <div id="xPostLink"></div>
+                    <button class="pub-btn now" onclick="publishToX('publish')">Post Now</button>
+                    <button class="pub-btn sched" onclick="publishToX('schedule')">Schedule</button>
                 </div>
-            </div>
-
-            <!-- Phase 5: Advertisement Images -->
-            <div class="section">
-                <h2>Phase 5: Advertisement Images</h2>
-                <div id="adImages" class="image-grid"></div>
-            </div>
-
-            <!-- Phase 6: Videos -->
-            <div class="section" id="videoSection" style="display: none;">
-                <h2>Phase 6: Video Production</h2>
-                
-                <h3>Video Summary:</h3>
-                <div id="videoSummary" class="data-box"></div>
-                
-                <h3>Background Music:</h3>
-                <div id="musicInfo" class="data-box"></div>
-                
-                <h3>Short Videos (15s, 25s, 30s):</h3>
-                <div id="videoShortGrid" class="video-grid"></div>
-                
-                <h3>Long Video (60s):</h3>
-                <div id="videoLongContainer" class="video-long"></div>
-            </div>
-
-            <!-- Phase 7: WordPress Publishing -->
-            <div class="section">
-                <h2>Phase 7: WordPress</h2>
-                <div id="wpPublishData" class="data-box"></div>
-                <div id="wpPublishActions" style="margin-top: 15px;"></div>
-            </div>
-
-            <!-- Phase 8: X Publishing -->
-            <div class="section">
-                <h2>Phase 8: X (Twitter)</h2>
-                <textarea id="xTweetText" rows="3" placeholder="Tweet text..."></textarea>
-                <div id="xDraftData" class="data-box"></div>
-                <div id="xPublishActions" style="margin-top: 15px;"></div>
             </div>
         </div>
     </div>
 
-    <script>
-        let campaignData = {};
+</div>
 
-        // Check connections
-        async function checkConnections() {
-            try {
-                const [wp, yt, x] = await Promise.all([
-                    fetch('/status').then(r => r.json()).catch(() => ({connected: false})),
-                    fetch('/youtube/status').then(r => r.json()).catch(() => ({is_connected: false})),
-                    fetch('/x/status').then(r => r.json()).catch(() => ({connected: false}))
-                ]);
+<script>
+    let campaignData = {};
+    let pollingInterval = null;
+    let phase1Done = false;
+    let reelDone = false;
 
-                // WordPress
-                if (wp.connected) {
-                    document.getElementById('wpStatus').innerHTML = `Connected: ${wp.site_url || 'Yes'}`;
-                    document.getElementById('wpActions').innerHTML = `<button class="btn-disconnect" onclick="disconnect('wp')">Disconnect</button>`;
-                } else {
-                    document.getElementById('wpStatus').innerHTML = 'Not Connected';
-                    document.getElementById('wpActions').innerHTML = `<button class="btn-connect" onclick="location.href='/connect_wordpress'">Connect</button>`;
-                }
+    async function checkConnections() {
+        try {
+            const [wp, yt, x] = await Promise.all([
+                fetch('/status').then(r => r.json()).catch(() => ({connected: false})),
+                fetch('/youtube/status').then(r => r.json()).catch(() => ({is_connected: false})),
+                fetch('/x/status').then(r => r.json()).catch(() => ({connected: false}))
+            ]);
+            setConn('wp', wp.connected, wp.site_url || 'Connected', '/connect_wordpress', '/disconnect');
+            setConn('yt', yt.is_connected, yt.channel_info?.channel_name || 'Connected', '/youtube/login', '/youtube/disconnect');
+            setConn('x', x.connected, '@' + (x.username || 'Connected'), '/x/login', '/x/disconnect');
+        } catch(e) { console.error(e); }
+    }
 
-                // YouTube
-                if (yt.is_connected) {
-                    const channelName = yt.channel_info?.channel_name || 'Yes';
-                    document.getElementById('ytStatus').innerHTML = `Connected: ${channelName}`;
-                    document.getElementById('ytActions').innerHTML = `<button class="btn-disconnect" onclick="disconnect('yt')">Disconnect</button>`;
-                } else {
-                    document.getElementById('ytStatus').innerHTML = 'Not Connected';
-                    document.getElementById('ytActions').innerHTML = `<button class="btn-connect" onclick="location.href='/youtube/login'">Connect</button>`;
-                }
-
-                // X (Twitter)
-                if (x.connected) {
-                    document.getElementById('xStatus').innerHTML = `Connected: @${x.username || 'Yes'}`;
-                    document.getElementById('xActions').innerHTML = `<button class="btn-disconnect" onclick="disconnect('x')">Disconnect</button>`;
-                } else {
-                    document.getElementById('xStatus').innerHTML = 'Not Connected';
-                    document.getElementById('xActions').innerHTML = `<button class="btn-connect" onclick="location.href='/x/login'">Connect</button>`;
-                }
-            } catch (e) {
-                console.error('Connection check failed:', e);
-            }
+    function setConn(id, connected, label, connectUrl, disconnectUrl) {
+        const statusEl = document.getElementById(id + 'Status');
+        const actionsEl = document.getElementById(id + 'Actions');
+        if (connected) {
+            statusEl.textContent = '● ' + label;
+            statusEl.className = 'conn-status ok';
+            actionsEl.innerHTML = `<button class="conn-btn disconnect" onclick="disconnect('${id}','${disconnectUrl}')">Disconnect</button>`;
+        } else {
+            statusEl.textContent = 'Not connected';
+            statusEl.className = 'conn-status no';
+            actionsEl.innerHTML = `<button class="conn-btn connect" onclick="location.href='${connectUrl}'">Connect</button>`;
         }
+    }
 
-        async function disconnect(platform) {
-            const routes = { wp: '/disconnect', yt: '/youtube/disconnect', x: '/x/disconnect' };
-            await fetch(routes[platform], { method: 'POST' });
-            checkConnections();
-        }
+    async function disconnect(id, url) {
+        await fetch(url, { method: 'POST' });
+        checkConnections();
+    }
 
-        // Form submission
-        document.getElementById('campaignForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            document.getElementById('loading').style.display = 'flex';
-            
-            const formData = new FormData(e.target);
-            
-            try {
-                const response = await fetch('/analyze_topic', { method: 'POST', body: formData });
-                const data = await response.json();
-                
-                if (!response.ok) throw new Error(data.error || 'Request failed');
-                
-                console.log('Backend Response:', data);
-                
-                campaignData = data;
-                renderResults(data);
-                
-                document.getElementById('loading').style.display = 'none';
-                document.getElementById('results').classList.remove('section-hidden');
-                
-            } catch (err) {
-                alert('Error: ' + err.message);
-                console.error('Error:', err);
-                document.getElementById('loading').style.display = 'none';
-            }
+    async function submitCampaign() {
+        const topic = document.getElementById('topicInput').value.trim();
+        if (!topic) return;
+
+        phase1Done = false;
+        reelDone = false;
+        campaignData = {};
+        stopPolling();
+
+        ['blogSection','adSection','reelWaitSection','reelSection','publishSection'].forEach(id => {
+            document.getElementById(id).style.display = 'none';
         });
 
-        function renderResults(data) {
-            // Phase 1: Intent
-            if (data.strategy) {
-                document.getElementById('intentData').textContent = JSON.stringify(data.strategy, null, 2);
-            }
+        const formData = new FormData();
+        formData.append('topic', topic);
+        formData.append('plan', document.querySelector('input[name="plan"]:checked').value);
 
-            // Phase 2: Research
-            if (data.research_results && data.research_results !== "N/A") {
-                document.getElementById('researchData').textContent = JSON.stringify(data.research_results, null, 2);
-            } else {
-                document.getElementById('researchData').textContent = "No research performed";
-            }
+        const btn = document.getElementById('submitBtn');
+        btn.disabled = true;
+        btn.textContent = 'Generating...';
 
-            // Phase 3: Strategic Brief
-            if (data.strategic_brief && data.strategic_brief !== "N/A") {
-                document.getElementById('briefData').textContent = JSON.stringify(data.strategic_brief, null, 2);
-            } else {
-                document.getElementById('briefData').textContent = "No strategic brief";
-            }
+        try {
+            const res = await fetch('/analyze_topic', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Request failed');
 
-            // Phase 4: Blog
-            if (data.blog_generation_data) {
-                document.getElementById('blogTitle').textContent = data.blog_generation_data.title || 'Blog Post';
-                document.getElementById('blogPrompt').textContent = data.blog_generation_data.visual_image_prompt || 'N/A';
-            }
-            if (data.final_blog_content && data.final_blog_content !== "N/A") {
-                document.getElementById('blogContent').textContent = data.final_blog_content;
-            } else {
-                document.getElementById('blogContent').textContent = "No blog content generated";
-            }
-            if (data.blog_hero_image_url && data.blog_hero_image_url !== "N/A") {
-                document.getElementById('blogImage').innerHTML = `<img src="${data.blog_hero_image_url}" style="width: 100%; border: 1px solid #000;">`;
-            }
+            campaignData = data;
+            if (data.blog_title) document.getElementById('xTweetText').value = data.blog_title;
 
-            // Phase 5: Advertisement Images
-            const adContainer = document.getElementById('adImages');
-            adContainer.innerHTML = '';
-            
-            const images = data.generated_image_urls || [];
-            const prompts = data.image_prompts || [];
-            
-            if (images.length > 0) {
-                images.forEach((url, idx) => {
-                    const promptText = prompts[idx]?.prompt || prompts[idx]?.image_prompt || 'N/A';
-                    adContainer.innerHTML += `
-                        <div class="image-card">
-                            <img src="${url}" alt="Ad Image ${idx + 1}">
-                            <div class="image-prompt">${promptText}</div>
-                        </div>
-                    `;
-                });
-            } else {
-                adContainer.innerHTML = '<p>No advertisement images generated</p>';
+            if (data.status === 'processing' && data.campaign_id) {
+                document.getElementById('progressCard').style.display = 'block';
+                document.getElementById('campaignIdDisplay').textContent = 'ID: ' + data.campaign_id;
+                startPolling(data.campaign_id);
             }
-
-            // Phase 6: Videos
-            if (data.videos && Array.isArray(data.videos)) {
-                document.getElementById('videoSection').style.display = 'block';
-                
-                // Video Summary
-                if (data.video_summary) {
-                    document.getElementById('videoSummary').textContent = JSON.stringify(data.video_summary, null, 2);
-                }
-                
-                // Music Info
-                if (data.strategy?.music_search_query) {
-                    document.getElementById('musicInfo').textContent = `Query: "${data.strategy.music_search_query}"`;
-                } else {
-                    document.getElementById('musicInfo').textContent = "No music info";
-                }
-                
-                // Separate SHORT and LONG videos
-                const shortVideos = data.videos.filter(v => 
-                    v.label !== 'LONG_FORM' && (v.status === 'Generated' || v.video_url)
-                );
-                const longVideo = data.videos.find(v => 
-                    v.label === 'LONG_FORM' && (v.status === 'Generated' || v.video_url)
-                );
-                
-                // Render SHORT videos
-                const shortGrid = document.getElementById('videoShortGrid');
-                shortGrid.innerHTML = '';
-                shortVideos.forEach((video, idx) => {
-                    shortGrid.appendChild(createVideoCard(video, idx));
-                });
-                
-                // Render LONG video
-                const longContainer = document.getElementById('videoLongContainer');
-                longContainer.innerHTML = '';
-                if (longVideo) {
-                    longContainer.appendChild(createVideoCard(longVideo, 999));
-                } else {
-                    longContainer.innerHTML = '<p>No long video generated</p>';
-                }
-            } else {
-                document.getElementById('videoSection').style.display = 'none';
+                        // Handle instant image intent result
+            if (data.status === 'complete' && data.generated_image_urls) {
+                document.getElementById('adSection').style.display = 'block';
+                document.getElementById('adGrid').innerHTML = data.generated_image_urls.map((url, i) =>
+                    `<div class="image-card"><img src="${url}?t=${Date.now()}" alt="Generated Image ${i+1}"></div>`
+                ).join('');
+                // Optional: show blog section with strategy summary
+                document.getElementById('blogSection').style.display = 'block';
+                document.getElementById('blogTitleDisplay').textContent = 'Generated Images';
+                document.getElementById('blogBody').textContent = data.message || 'Images generated successfully.';
             }
-
-            // Phase 7: WordPress
-            if (data.wordpress_post_id && data.wordpress_post_id !== "N/A") {
-                let wpData = `Post ID: ${data.wordpress_post_id}\nStatus: ${data.wordpress_status || 'Draft'}`;
-                if (data.wordpress_url) wpData += `\nURL: ${data.wordpress_url}`;
-                if (data.wordpress_message) wpData += `\nMessage: ${data.wordpress_message}`;
-                
-                document.getElementById('wpPublishData').textContent = wpData;
-                
-                document.getElementById('wpPublishActions').innerHTML = `
-                    <label>Schedule Time: <input type="datetime-local" id="wpTime"></label><br><br>
-                    <button onclick="publishWordPress('publish')">Publish Now</button>
-                    <button onclick="publishWordPress('schedule')">Schedule</button>
-                    <button onclick="publishWordPress('trash')">Discard</button>
-                    ${data.wordpress_url ? `<a href="${data.wordpress_url}" target="_blank" class="link-btn">View Draft</a>` : ''}
-                `;
-            } else {
-                document.getElementById('wpPublishData').textContent = "No WordPress post created";
-            }
-
-            // Phase 8: X (Twitter)
-            if (data.x_draft) {
-                document.getElementById('xTweetText').value = data.x_draft.text || '';
-                document.getElementById('xDraftData').textContent = JSON.stringify(data.x_draft, null, 2);
-                
-                document.getElementById('xPublishActions').innerHTML = `
-                    <label>Schedule Time: <input type="datetime-local" id="xTime"></label><br><br>
-                    <button onclick="publishX('publish')">Post Now</button>
-                    <button onclick="publishX('schedule')">Schedule</button>
-                    <button onclick="publishX('discard')">Discard</button>
-                `;
-            } else {
-                document.getElementById('xDraftData').textContent = "No X draft created";
-            }
+        } catch(err) {
+            alert('Error: ' + err.message);
+        } finally {
+            btn.disabled = false;
+            btn.textContent = 'Generate Content';
         }
+    }
 
-        // Create video card
-        function createVideoCard(video, index) {
-            const card = document.createElement('div');
-            card.className = 'video-card';
-            
-            let publishedLink = '';
-            if (video.youtube_upload_data?.status === 'Published' && video.youtube_upload_data?.public_url) {
-                publishedLink = `<a href="${video.youtube_upload_data.public_url}" target="_blank" class="link-btn">View on YouTube</a>`;
+    function startPolling(id) {
+        pollStatus(id);
+        pollingInterval = setInterval(() => pollStatus(id), 15000);
+    }
+
+    function stopPolling() {
+        if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
+    }
+
+    async function pollStatus(id) {
+        try {
+            const res = await fetch(`/campaign_status/${id}`);
+            const data = await res.json();
+            if (!res.ok) { stopPolling(); return; }
+
+            const pct = data.progress?.percentage || 0;
+            document.getElementById('progressFill').style.width = pct + '%';
+            document.getElementById('progressMsg').textContent = data.message || 'Processing...';
+
+            updateUI(data);
+
+            if (data.status === 'complete') {
+                stopPolling();
+                document.getElementById('progressCard').style.display = 'none';
             }
-            
-            card.innerHTML = `
-                <h4>${video.label} (${video.duration}s)</h4>
-                ${video.video_url ? `
-                    <video controls>
-                        <source src="${video.video_url}" type="video/mp4">
-                        Your browser does not support video.
-                    </video>
-                ` : '<p>Video not available</p>'}
-                <p><strong>Title:</strong> ${video.title || 'N/A'}</p>
-                <p><strong>Description:</strong> ${(video.description || '').substring(0, 150)}...</p>
-                ${video.youtube_upload_data ? `
-                    <div class="data-box" style="margin-top: 10px;">
-                        YouTube Status: ${video.youtube_upload_data.status || 'Ready'}
-                        ${video.youtube_upload_data.connected === false ? '\nYouTube Not Connected' : ''}
-                    </div>
-                ` : ''}
-                ${publishedLink || `
-                    <div class="video-actions">
-                        <label>Schedule: <input type="datetime-local" id="ytTime${index}"></label>
-                        <button onclick="publishVideo(${index}, 'publish')">Publish Now</button>
-                        <button onclick="publishVideo(${index}, 'schedule')">Schedule</button>
-                        <button onclick="publishVideo(${index}, 'discard')">Discard</button>
-                    </div>
-                `}
-            `;
-            
-            return card;
+        } catch(e) { console.error('Poll error:', e); }
+    }
+
+    function updateUI(data) {
+    // Blog
+    if (data.blog?.content) {
+        document.getElementById('blogSection').style.display = 'block';
+        document.getElementById('blogBody').textContent = data.blog.content;
+        if (data.blog.image_url) {
+            document.getElementById('blogHeroWrap').innerHTML =
+                `<img class="blog-hero" src="${data.blog.image_url}?t=${Date.now()}" alt="Hero">`;
         }
+        const title = campaignData.blog_title || data.blog?.title;
+        if (title) document.getElementById('blogTitleDisplay').textContent = title;
+    }
 
-        // Publish video to YouTube
-        async function publishVideo(videoIndex, action) {
-            const video = campaignData.videos[videoIndex];
-            if (!video) return alert('Video not found');
-            
-            const timeInput = document.getElementById(`ytTime${videoIndex}`);
-            const time = timeInput?.value;
-            
-            const formData = new FormData();
-            formData.append('platform', 'youtube');
-            formData.append('action', action);
-            formData.append('video_path', video.video_path || video.youtube_upload_data?.file_path);
-            formData.append('video_title', video.title);
-            formData.append('video_description', video.description || video.title);
-            formData.append('video_label', video.label);
-            if (time && action === 'schedule') {
-                formData.append('publish_time', new Date(time).toISOString());
+    // Ad Images (independent check)
+    if (data.ad_images?.length > 0) {
+        document.getElementById('adSection').style.display = 'block';
+        document.getElementById('adGrid').innerHTML = data.ad_images.map((img, i) =>
+            `<div class="image-card"><img src="${img.url}?t=${Date.now()}" alt="Ad ${i+1}"></div>`
+        ).join('');
+    }
+
+    // WordPress publish section (independent check)
+    if (data.wordpress_post_id) {
+        campaignData.wordpress_post_id = data.wordpress_post_id;
+        document.getElementById('wpPostInfo').textContent = 'Draft ID: ' + data.wordpress_post_id;
+        document.getElementById('publishSection').style.display = 'block';
+    }
+
+    // Show reel waiting notice once blog is ready but video isn't
+    if (data.blog?.content && !data.videos?.length) {
+        document.getElementById('reelWaitSection').style.display = 'block';
+    }
+
+    // Reel ready
+    if (!reelDone && data.videos?.length > 0) {
+        const reel = data.videos.find(v => v.label === 'SHORT_1') || data.videos[0];
+        if (reel) {
+            document.getElementById('reelWaitSection').style.display = 'none';
+            document.getElementById('reelSection').style.display = 'block';
+            const vid = document.getElementById('reelVideo');
+            vid.src = `${reel.video_url}?cb=${Date.now()}`;
+            vid.load();
+            document.getElementById('reelTitle').textContent = reel.title || 'Short Reel';
+            document.getElementById('reelDuration').textContent = `Duration: ${reel.duration}s`;
+            campaignData.reel = reel;
+            reelDone = true;
+        }
+    }
+}
+
+    async function publishReel(action) {
+        const reel = campaignData.reel;
+        if (!reel) return alert('Reel not ready yet');
+        const timeVal = document.getElementById('ytReelTime').value;
+        const fd = new FormData();
+        fd.append('platform', 'youtube');
+        fd.append('action', action);
+        fd.append('video_path', reel.video_path);
+        fd.append('video_title', reel.title || 'Short Reel');
+        fd.append('video_description', reel.description || reel.title || 'Short Reel');
+        fd.append('video_label', reel.label);
+        if (action === 'schedule' && timeVal) fd.append('publish_time', new Date(timeVal).toISOString());
+
+        showLoading(true);
+        try {
+            const res = await fetch('/schedule_post', { method: 'POST', body: fd });
+            const result = await res.json();
+            showLoading(false);
+            if (res.ok) {
+                alert('✅ YouTube ' + action + ' successful!');
+                if (result.video_url) {
+                    document.querySelector('.reel-actions').innerHTML =
+                        `<a href="${result.video_url}" target="_blank" class="link-btn">🎬 View on YouTube</a>`;
+                }
+            } else {
+                alert('❌ YouTube Error: ' + (result.error || result.message || 'Failed'));
             }
-            
-            try {
-                document.getElementById('loading').style.display = 'flex';
-                const res = await fetch('/schedule_post', { method: 'POST', body: formData });
-                const result = await res.json();
-                
-                document.getElementById('loading').style.display = 'none';
-                
-                if (res.ok) {
-                    alert(`YouTube ${action} successful!`);
-                    // Update UI without reload
-                    if (result.video_url) {
-                        const card = document.querySelector(`#ytTime${videoIndex}`).closest('.video-card');
-                        const actions = card.querySelector('.video-actions');
-                        actions.innerHTML = `<a href="${result.video_url}" target="_blank" class="link-btn">View on YouTube</a>`;
+        } catch(e) { showLoading(false); alert('Error: ' + e.message); }
+    }
+
+    async function publishWordPress(action) {
+        if (!campaignData.wordpress_post_id) return alert('⏳ WordPress draft still being created');
+        const timeVal = document.getElementById('wpTime').value;
+        const fd = new FormData();
+        fd.append('platform', 'wordpress');
+        fd.append('action', action);
+        fd.append('post_id', campaignData.wordpress_post_id);
+        if (action === 'schedule' && timeVal) fd.append('publish_time', new Date(timeVal).toISOString());
+
+        showLoading(true);
+        try {
+            const res = await fetch('/schedule_post', { method: 'POST', body: fd });
+            const result = await res.json();
+            showLoading(false);
+            if (res.ok) {
+                alert('✅ WordPress ' + action + ' successful!');
+                if (result.wordpress?.post_url) {
+                    document.getElementById('wpPostLink').innerHTML =
+                        `<a href="${result.wordpress.post_url}" target="_blank" class="link-btn">📰 View Post</a>`;
+                }
+            } else {
+                alert('❌ WordPress Error: ' + (result.error || 'Unknown'));
+            }
+        } catch(e) { showLoading(false); alert('Error: ' + e.message); }
+    }
+
+    async function publishToX(action) {
+        const text = document.getElementById('xTweetText').value.trim();
+        if (!text) return alert('Tweet text is empty');
+        const timeVal = document.getElementById('xTime').value;
+        const fd = new FormData();
+        fd.append('platform', 'x');
+        fd.append('action', action);
+        fd.append('tweet_text', text);
+        if (action === 'schedule' && timeVal) fd.append('publish_time', new Date(timeVal).toISOString());
+
+        showLoading(true);
+        try {
+            const res = await fetch('/schedule_post', { method: 'POST', body: fd });
+            const result = await res.json();
+            showLoading(false);
+            if (res.ok) {
+                alert('✅ Posted to X!');
+                if (result.tweet_url) {
+                        document.getElementById('xPostLink').innerHTML =
+                            `<a href="${result.tweet_url}" target="_blank" class="link-btn">🐦 View on X</a>`;
                     }
-                } else {
-                    alert('YouTube Error: ' + (result.error || result.message || 'Action failed'));
-                }
-            } catch (err) {
-                document.getElementById('loading').style.display = 'none';
-                alert('Error: ' + err.message);
+            } else {
+                alert('❌ X Error: ' + (result.error || 'Unknown'));
             }
-        }
+        } catch(e) { showLoading(false); alert('Error: ' + e.message); }
+    }
 
-        // Publish WordPress
-        async function publishWordPress(action) {
-            const time = document.getElementById('wpTime')?.value;
-            
-            const formData = new FormData();
-            formData.append('platform', 'wordpress');
-            formData.append('action', action);
-            formData.append('post_id', campaignData.wordpress_post_id);
-            if (time && action === 'schedule') {
-                formData.append('publish_time', new Date(time).toISOString());
-            }
-            
-            try {
-                document.getElementById('loading').style.display = 'flex';
-                const res = await fetch('/schedule_post', { method: 'POST', body: formData });
-                const result = await res.json();
-                
-                document.getElementById('loading').style.display = 'none';
-                
-                if (res.ok) {
-                    alert(`WordPress ${action} successful!`);
-                    if (result.wordpress?.post_url) {
-                        document.getElementById('wpPublishActions').innerHTML += `
-                            <a href="${result.wordpress.post_url}" target="_blank" class="link-btn">View Post</a>
-                        `;
-                    }
-                } else {
-                    alert('WordPress Error: ' + (result.error || result.message || 'Action failed'));
-                }
-            } catch (err) {
-                document.getElementById('loading').style.display = 'none';
-                alert('Error: ' + err.message);
-            }
-        }
+    function showLoading(show) {
+        document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none';
+    }
 
-        // Publish X
-        async function publishX(action) {
-            const time = document.getElementById('xTime')?.value;
-            const text = document.getElementById('xTweetText').value;
-            
-            const formData = new FormData();
-            formData.append('platform', 'x');
-            formData.append('action', action);
-            formData.append('tweet_text', text);
-            if (campaignData.x_draft?.media_path) {
-                formData.append('image_path', campaignData.x_draft.media_path);
-            }
-            if (time && action === 'schedule') {
-                formData.append('publish_time', new Date(time).toISOString());
-            }
-            
-            try {
-                document.getElementById('loading').style.display = 'flex';
-                const res = await fetch('/schedule_post', { method: 'POST', body: formData });
-                const result = await res.json();
-                
-                document.getElementById('loading').style.display = 'none';
-                
-                if (res.ok) {
-                    alert(`X ${action} successful!`);
-                    if (result.tweet_url) {
-                        document.getElementById('xPublishActions').innerHTML += `
-                            <a href="${result.tweet_url}" target="_blank" class="link-btn">View Tweet</a>
-                        `;
-                    }
-                } else {
-                    alert('X Error: ' + (result.error || result.message || 'Action failed'));
-                }
-            } catch (err) {
-                document.getElementById('loading').style.display = 'none';
-                alert('Error: ' + err.message);
-            }
-        }
-
-        // Initialize
-        checkConnections();
-    </script>
+    checkConnections();
+    window.addEventListener('beforeunload', stopPolling);
+</script>
 </body>
 </html>

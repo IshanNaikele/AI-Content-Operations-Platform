@@ -5,11 +5,9 @@ import json
 import requests
 import re
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, ValidationError
-from google import genai
-from google.genai import types
-from fastapi import HTTPException
-
+from pydantic import BaseModel, ValidationError 
+from fastapi import HTTPException 
+from utils.ai_helpers import openrouter_chat_completion, generate_cloudflare_image
 # --- Pydantic Models (Copied from original for self-containment/clean imports) ---
 class RefinedImageDetail(BaseModel):
     """Details for a single, refined image prompt variation."""
@@ -55,7 +53,7 @@ def map_ratio_to_dimensions(ratio_str: str) -> Dict[str, int]:
     return ratio_map.get(cleaned_ratio, {"width": 1024, "height": 1024})
 
 
-def generate_image_prompt(topic: str, gemini_client: genai.Client) -> RefinedImageOutput:
+def generate_image_prompt(topic: str ) -> RefinedImageOutput:
     """Calls the second LLM to refine an image topic into a detailed list of prompts."""
     
     # System Prompt Logic: Instruct the LLM to handle counting and variation
@@ -82,25 +80,32 @@ Each prompt object in the list MUST adhere to the following schema:
 User Input: "{topic}"
 """
     
-    image_response = gemini_client.models.generate_content(
-        model='gemini-2.0-flash',
-        contents=[image_prompt_system],
-        config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.9)
-    )
-    
+    image_response = openrouter_chat_completion(
+    messages=[
+        {"role": "system", "content": image_prompt_system}
+    ],
+    temperature=0.9,
+    response_format={"type": "json_object"},
+    stage="image_prompt"
+)
+
     try:
-        image_prompt_data = json.loads(image_response.text)
-        # This line will raise a proper Pydantic ValidationError if the schema is wrong
-        return RefinedImageOutput(**image_prompt_data) 
-    except ValidationError as e:
-        # Catch explicit Pydantic errors and allow them to propagate
-        raise e
+        if not image_response.choices or image_response.choices[0] is None:
+            raise RuntimeError("OpenRouter returned empty choices for image prompt generation")
+        
+        image_prompt_data = json.loads(image_response.choices[0].message.content)
+        return RefinedImageOutput(**image_prompt_data)
     except Exception as e:
-        # Catch JSON decoding errors or other issues and raise a generic error
-        # We can raise a simple Python ValueError or a custom exception instead.
         print(f"DEBUG: Failed to parse LLM output: {e}")
-        print(f"DEBUG: Raw LLM Output: {image_response.text}")
-        raise ValueError(f"LLM output is malformed or invalid JSON. Details: {e}")
+        
+        # Safe raw output extraction — no .text on ChatCompletion
+        if image_response and image_response.choices and image_response.choices[0]:
+            raw_output = image_response.choices[0].message.content
+        else:
+            raw_output = str(image_response)
+        print(f"DEBUG: Raw LLM Output: {raw_output}")
+        
+        raise RuntimeError(f"Failed to parse image prompt generation: {e}")
 
 
 def generate_image(prompt: str, image_filename: str, image_folder: str,width: int, height: int) -> str:
@@ -108,43 +113,21 @@ def generate_image(prompt: str, image_filename: str, image_folder: str,width: in
     Generates an image using Fireworks AI FLUX.1-schnell-fp8 model.
     Returns the URL path to the stored image.
     """
-    FIREWORKS_API_KEY = os.getenv("FIREWORKS_API_KEY")
-    if not FIREWORKS_API_KEY:
-        raise HTTPException(status_code=500, detail="Fireworks API key not available for image generation.")
-
     file_path = os.path.join(image_folder, image_filename)
-    API_URL = "https://api.fireworks.ai/inference/v1/workflows/accounts/fireworks/models/flux-1-schnell-fp8/text_to_image"
     
-    headers = {
-        "Content-Type": "application/json",
-        "Accept": "image/jpeg",
-        "Authorization": f"Bearer {FIREWORKS_API_KEY}",
-    }
-    
-    # We maintain 1024x1024 as the default size
-    payload = {
-        "prompt": prompt,
-        "width": width,
-        "height": height,
-        "sampler": "dpm++ sde"
-    }
-    print(f"DEBUG: Sending dimensions to API: W={width}, H={height}")
     try:
-        response = requests.post(API_URL, headers=headers, json=payload, timeout=90)
+        saved_path = generate_cloudflare_image(
+            prompt=prompt,
+            output_path=file_path,
+            width=width,
+            height=height,
+            key_num=1
+        )
         
-        if response.status_code == 200:
-            with open(file_path, "wb") as f:
-                f.write(response.content)
-            
-            # Return the URL path for the frontend to access
-            return f"/{image_folder}/{image_filename}"
-        else:
-            # Raise an HTTPException if the image API fails
-            raise HTTPException(status_code=500, detail=f"Image generation failed (API error): {response.status_code}, {response.text}")
-    except requests.exceptions.Timeout:
-        raise HTTPException(status_code=500, detail="Image generation timed out.")
+        # Return URL path for frontend (media is mounted at /media)
+        return f"/{image_folder}/{image_filename}"
+        
     except Exception as e:
-        # Catch all other exceptions during generation
         raise HTTPException(status_code=500, detail=f"Image generation failed: {e}")
     
 def generate_image_nano_banana(
@@ -152,8 +135,7 @@ def generate_image_nano_banana(
     image_filename: str, 
     image_folder: str, 
     width: int, 
-    height: int, 
-    gemini_client: genai.Client
+    height: int,  
 ) -> str:
     """
     Generates an image using Gemini's native 'Nano Banana' (Imagen 3) model.

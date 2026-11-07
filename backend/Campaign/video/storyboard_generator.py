@@ -1,18 +1,13 @@
 import json
 from typing import List, Dict, Any, Optional, Tuple
-from pydantic import BaseModel, ValidationError
-from google import genai
-from google.genai import types
+from pydantic import BaseModel, ValidationError 
 from fastapi import HTTPException
 import re
-import math
-# --- Import PRODUCTION Models for Type Hinting and Input ---
-# Removed all Mock imports
+import math   
 from Campaign.video.video_bible_generator import VideoBibleOutput
 from .audio_generator_elevenlabs import AudioTimestampOutput, Timestamp 
 from Campaign.research_analysis import ResearchAnalysis 
-
-# --- 1. Pydantic Models for Storyboard Output (Modified for LLM Output) ---
+from utils.ai_helpers import openrouter_chat_completion 
 
 class SceneDraft(BaseModel):
     """
@@ -129,15 +124,11 @@ def generate_storyboard(
     timestamps_output: AudioTimestampOutput, # Used real production type
     video_bible_output: VideoBibleOutput,    # Used real production type
     analysis_brief: ResearchAnalysis,        # Used real production type
-    gemini_client: genai.Client,
 ) -> StoryboardOutput:
     """
     Generates a detailed, continuity-aware storyboard using Gemini and post-processes 
     it in Python to insert accurate timing data.
     """
-    
-    if not gemini_client:
-        raise HTTPException(status_code=500, detail="Gemini Client is not initialized.")
     
     total_duration = timestamps_output.timestamps[-1].end
     if total_duration <= 30:
@@ -182,17 +173,17 @@ FULL NARRATION TEXT: {full_narration_text}
  
     # 3. Call the Gemini API
     try:
-        response = gemini_client.models.generate_content(
-            model='gemini-2.0-flash',
-            contents=[llm_system_prompt, llm_user_prompt],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json", 
-                temperature=0.4,
-                max_output_tokens=dynamic_max_tokens
-            )
+        response = openrouter_chat_completion(
+            messages=[
+                {"role": "system", "content": llm_system_prompt},
+                {"role": "user", "content": llm_user_prompt}
+            ],
+            temperature=0.4,
+            response_format={"type": "json_object"},
+            stage="video_1"
         )
         
-        raw_json_text = response.text.strip()
+        raw_json_text = response.choices[0].message.content.strip()
         llm_draft_output = StoryboardLLMOutput.model_validate_json(raw_json_text)
         
         # 4. POST-PROCESSING: Calculate precise timing and narration in Python

@@ -1,7 +1,3 @@
-"""
-Main FastAPI Application Entry Point
-Refactored for better modularity and maintainability
-"""
 import os
 import uvicorn
 from fastapi import FastAPI

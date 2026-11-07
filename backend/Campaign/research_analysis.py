@@ -3,9 +3,7 @@
 import json
 from typing import List, Dict, Any, Optional
 from pydantic import BaseModel, ValidationError
-from google import genai
-from google.genai import types
-
+from utils.ai_helpers import openrouter_chat_completion
 # --- 1. Pydantic Models for Synthesis Output ---
 
 class BrandStrategy(BaseModel):
@@ -93,7 +91,7 @@ Do not include any raw links or snippets in your final output.
 
 # --- 3. Main Analysis Function ---
 
-def perform_research_analysis(topic: str, raw_research_results: List[Dict[str, Any]], gemini_client: genai.Client) -> ResearchAnalysis:
+def perform_research_analysis(topic: str, raw_research_results: List[Dict[str, Any]] ) -> ResearchAnalysis:
     """
     Passes the user's topic and raw research snippets to Gemini for strategic synthesis.
     
@@ -119,25 +117,30 @@ def perform_research_analysis(topic: str, raw_research_results: List[Dict[str, A
         
     user_prompt = f"Product Launch Goal: {topic}\n\n{formatted_research}"
 
-    print("\n--- Sending Raw Data to Gemini for Analysis ---")
+    print("\n--- Sending Raw Data to OpenRouter for Analysis ---")
 
-    response = gemini_client.models.generate_content(
-        model='gemini-2.0-flash',
-        contents=[analysis_system_prompt, user_prompt],
-        
-        config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.5)
+    response = openrouter_chat_completion(
+        messages=[
+            {"role": "system", "content": analysis_system_prompt},
+            {"role": "user", "content": user_prompt}
+        ],
+        temperature=0.5,
+        response_format={"type": "json_object"},
+        stage="research"
     )
-    
+
     print("\n--- LLM Synthesis JSON Response (Raw) ---")
-    print(response.text)
+    print(response.choices[0].message.content)
     print("-----------------------------------------\n")
 
     try:
-        analysis_data = json.loads(response.text)
+        analysis_data = json.loads(response.choices[0].message.content)
         return ResearchAnalysis(**analysis_data)
     except ValidationError as e:
         # Pydantic validation error (schema mismatch)
         raise e
     except Exception as e:
         # General decoding or parsing error
-        raise ValueError(f"Analysis LLM returned invalid JSON or structure: {e}. Raw output: {response.text}")
+        raw_output = response.choices[0].message.content if response and response.choices else str(response)
+        raise ValueError(f"Analysis LLM returned invalid JSON or structure: {e}. Raw output: {raw_output}")
+         

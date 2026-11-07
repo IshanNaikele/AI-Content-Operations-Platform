@@ -79,11 +79,12 @@ def get_youtube_authorization_url(request: Request) -> str:
     """Generate YouTube OAuth URL."""
     flow = Flow.from_client_config(CLIENT_CONFIG, scopes=YOUTUBE_SCOPE)
     flow.redirect_uri = G_REDIRECT_URI
-    
+    flow.code_verifier = ''
     authorization_url, state = flow.authorization_url(
         access_type='offline',
         include_granted_scopes='true',
-        prompt='consent'
+        prompt='consent',
+        code_challenge_method=None
     )
     
     request.session['google_oauth_state'] = state
