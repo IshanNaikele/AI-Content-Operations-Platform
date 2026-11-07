@@ -6,6 +6,9 @@ backend/my_env
 # C extensions
 *.so
 backend/my_env/
+backend/data/
+backend/media/
+backend/downloaded_music/
 # Distribution / packaging
 .Python
 build/
